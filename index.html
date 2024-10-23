@@ -200,8 +200,8 @@
             renderPromotions(data.data); // Assuming 'data' holds the array of promotions
             if (data.totalRows > 0) {
               setupPagination(data.totalRows, pageSize, page); // Setup pagination
-              $("#totalRow").text(data.totalRows);
             }
+            $("#totalRow").text(data.totalRows);
           })
           .catch((error) => {
             console.error("Error fetching promotions:", error);
