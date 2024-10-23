@@ -15,7 +15,27 @@
         margin-bottom: 5px;
         font-weight: bold;
       }
+      .progress-container {
+        background-color: #e0e0e0; /* Màu nền của thanh progress */
+        border-radius: 5px;
+        width: 100%; /* Độ rộng đầy đủ của ô */
+        height: 10px; /* Chiều cao của thanh progress */
+        position: relative;
+      }
 
+      .progress-bar {
+        background-color: #4caf50; /* Màu của thanh progress */
+        height: 100%; /* Thanh sẽ có chiều cao đầy đủ */
+        width: 0; /* Độ rộng ban đầu */
+        border-radius: 5px;
+        transition: width 0.3s ease; /* Hiệu ứng chuyển đổi khi thay đổi độ rộng */
+      }
+
+      .progress-text {
+        text-align: center;
+        margin-top: 5px;
+        font-weight: bold;
+      }
       select {
         padding: 10px;
         border: 1px solid #ccc;
@@ -173,9 +193,9 @@
           .then((data) => {
             console.log(data);
             renderPromotions(data.data); // Assuming 'data' holds the array of promotions
-            if(data.totalRows>0){
-                setupPagination(data.totalRows, pageSize, page); // Setup pagination
-                $("#totalRow").text(data.totalRows);
+            if (data.totalRows > 0) {
+              setupPagination(data.totalRows, pageSize, page); // Setup pagination
+              $("#totalRow").text(data.totalRows);
             }
           })
           .catch((error) => {
@@ -186,26 +206,26 @@
       async function renderPromotions(data) {
         const tableBody = document.querySelector("#promotions_table tbody");
 
-        tableBody.innerHTML = ""; // Clear the table
+        tableBody.innerHTML = ""; // Xóa bảng trước khi render lại
 
         for (const item of data) {
-          // Determine the class based on the status
+          // Xác định class dựa trên trạng thái
           let statusClass = "";
           if (item.status === "NOT_START") {
-            statusClass = "text-warning"; // Warning color
+            statusClass = "text-warning"; // Màu cảnh báo
           } else if (item.status === "ONGOING") {
-            statusClass = "text-success"; // Success color
+            statusClass = "text-success"; // Màu thành công
           } else {
-            statusClass = "text-danger"; // Danger color for other statuses
+            statusClass = "text-danger"; // Màu nguy hiểm cho các trạng thái khác
           }
 
-          // Progress
-          const progress =
-            item.is_update_product == 1 || item.status == 'ONGOING'
+          // Progress text dựa trên trạng thái cập nhật sản phẩm
+          const progressText =
+            item.is_update_product == 1 || item.status == "ONGOING"
               ? '<span class="text-success">Success</span>'
               : '<span class="text-warning">Processing</span>';
 
-          // Format dates using Moment.js
+          // Format ngày sử dụng Moment.js
           const begin_time = moment
             .unix(item.begin_time)
             .tz("America/Los_Angeles")
@@ -215,17 +235,26 @@
             .tz("America/Los_Angeles")
             .format("DD/MM/YYYY hh:mm:ss A");
 
-          // Create the row with status class applied
+          // Tính phần trăm hoàn thành dựa trên count và total_product
+          const progressPercentage = (item.count / item.total_product) * 100;
+
+          // Tạo hàng với thanh progress và class trạng thái
           const row = `
-            <tr>
-                <td>${item.title}</td>
-                <td class="${statusClass}">${item.status}</td>
-                <td>${item.acc_code}</td>
-                <td>${begin_time}</td>
-                <td>${end_time}</td>
-                <td>${progress} <div>${item.count}/${item.total_product}</div></td>
-            </tr>
-        `;
+      <tr>
+          <td>${item.title}</td>
+          <td class="${statusClass}">${item.status}</td>
+          <td>${item.acc_code}</td>
+          <td>${begin_time}</td>
+          <td>${end_time}</td>
+          <td>
+            <div class="progress-container">
+              <div class="progress-bar" style="width: ${progressPercentage}%;"></div>
+            </div>
+            <div class="progress-text">${item.count}/${item.total_product}</div>
+            <div>${progressText}</div>
+          </td>
+      </tr>
+    `;
           tableBody.innerHTML += row;
         }
       }
@@ -266,7 +295,7 @@
               option.value = store.shop_cipher; // Assuming store ID is in `shop_cipher`
               option.textContent = store.acc_code; // Assuming store name is in `acc_code`
               // Chọn kết quả đầu tiên
-              
+
               shopSelect.appendChild(option);
             });
           })
