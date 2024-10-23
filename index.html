@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Promotion Management</title>
+    <style>
+      body {
+        font-family: Verdana, Geneva, Tahoma, sans-serif;
+      }
+      form {
+        display: flex;
+      }
+      label {
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+
+      select {
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 16px;
+        margin-bottom: 15px;
+        transition: border-color 0.3s;
+      }
+
+      select:focus {
+        border-color: #007bff; /* Thay đổi màu viền khi focus */
+        outline: none; /* Loại bỏ outline mặc định */
+      }
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      .table th,
+      .table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+      }
+      .table th {
+        background-color: #f4f4f4;
+      }
+      .btn {
+        padding: 5px 10px;
+        text-decoration: none;
+      }
+      .btn-danger {
+        background-color: red;
+        color: white;
+      }
+      .pagination {
+        margin-top: 20px;
+        display: flex;
+        justify-content: center;
+      }
+      .pagination a {
+        padding: 10px;
+        border: 1px solid #ddd;
+        margin: 0 5px;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .pagination a.active {
+        background-color: #4caf50;
+        color: white;
+      }
+      .pagination a.disabled {
+        pointer-events: none;
+        color: #ccc;
+      }
+      .text-warning {
+        color: orange;
+      }
+      .text-success {
+        color: green;
+      }
+      .text-danger {
+        color: red;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Promotion Management</h1>
+
+    <!-- Filters for promotion status and shop_id -->
+    <form>
+      <div>
+        <label for="status_promotion">Status:</label>
+        <select id="status_promotion" onchange="select_onchange()">
+          <option value="">All</option>
+          <option value="ONGOING">Ongoing</option>
+          <option value="NOT_START">Not start</option>
+          <option value="UPCOMING">Upcoming</option>
+          <option value="ENDED">Ended</option>
+          <option value="DEACTIVATED">Deactivated</option>
+          <option value="EXPIRED">Expired</option>
+        </select>
+      </div>
+      <div style="margin-left: 10px">
+        <label for="shop_id">Shop:</label>
+        <select id="shop_id" onchange="select_onchange_shop()">
+          <option value="">All Shops</option>
+        </select>
+      </div>
+      <div style="margin-left: 10px">
+        <label for="">Total Rows:</label>
+        <span class="text-danger" id="totalRow">0</span>
+      </div>
+    </form>
+
+    <!-- Table to display promotions -->
+    <div class="table-responsive">
+      <table class="table" id="promotions_table">
+        <thead>
+          <tr>
+            <th>Tên</th>
+            <th>Trạng thái</th>
+            <th>Shop</th>
+            <th>Ngày bắt đầu</th>
+            <th>Ngày kết thúc</th>
+            <th>Tiến trình</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Dynamic content will be injected here by JavaScript -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination controls -->
+    <div class="pagination" id="pagination">
+      <!-- Dynamic pagination buttons will be added here -->
+    </div>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+      integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.34/moment-timezone-with-data.min.js"></script>
+
+    <script type="text/javascript">
+      let currentPage = 1; // Current page number
+      const pageSize = 100; // Number of items per page
+
+      // Function to fetch promotion data
+      function fetchPromotions(page = 1) {
+        const status = document.getElementById("status_promotion").value;
+        const shop_id = document.getElementById("shop_id").value;
+
+        // Create an object to store query parameters
+        let queryParams = {
+          p: page, // Current page number
+          pagination_option: pageSize, // Number of items per page
+        };
+
+        if (status) queryParams.status = status;
+        if (shop_id) queryParams.shop_id = shop_id;
+
+        // Convert queryParams to query string
+        const queryString = new URLSearchParams(queryParams).toString();
+
+        // API URL with query parameters (adjust the URL based on your API endpoint)
+        const apiUrl = `https://hq.vuongandong.com/danang/api/promotion_tpl.php?${queryString}`;
+
+        // Fetch data from the API
+        fetch(apiUrl)
+          .then((response) => response.json())
+          .then((data) => {
+            console.log(data);
+            renderPromotions(data.data); // Assuming 'data' holds the array of promotions
+            if(data.totalRows>0){
+                setupPagination(data.totalRows, pageSize, page); // Setup pagination
+                $("#totalRow").text(data.totalRows);
+            }
+          })
+          .catch((error) => {
+            console.error("Error fetching promotions:", error);
+          });
+      }
+
+      async function renderPromotions(data) {
+        const tableBody = document.querySelector("#promotions_table tbody");
+
+        tableBody.innerHTML = ""; // Clear the table
+
+        for (const item of data) {
+          // Determine the class based on the status
+          let statusClass = "";
+          if (item.status === "NOT_START") {
+            statusClass = "text-warning"; // Warning color
+          } else if (item.status === "ONGOING") {
+            statusClass = "text-success"; // Success color
+          } else {
+            statusClass = "text-danger"; // Danger color for other statuses
+          }
+
+          // Progress
+          const progress =
+            item.is_update_product == 1 || item.status == 'ONGOING'
+              ? '<span class="text-success">Success</span>'
+              : '<span class="text-warning">Processing</span>';
+
+          // Format dates using Moment.js
+          const begin_time = moment
+            .unix(item.begin_time)
+            .tz("America/Los_Angeles")
+            .format("DD/MM/YYYY hh:mm:ss A");
+          const end_time = moment
+            .unix(item.end_time)
+            .tz("America/Los_Angeles")
+            .format("DD/MM/YYYY hh:mm:ss A");
+
+          // Create the row with status class applied
+          const row = `
+            <tr>
+                <td>${item.title}</td>
+                <td class="${statusClass}">${item.status}</td>
+                <td>${item.acc_code}</td>
+                <td>${begin_time}</td>
+                <td>${end_time}</td>
+                <td>${progress} <div>${item.count}/${item.total_product}</div></td>
+            </tr>
+        `;
+          tableBody.innerHTML += row;
+        }
+      }
+
+      function select_onchange() {
+        fetchPromotions(1); // Fetch data for the first page when filters change
+      }
+
+      // Function to handle shop change
+      function select_onchange_shop() {
+        fetchPromotions(1); // Fetch data for the first page when filters change
+      }
+
+      // Function to delete promotion (dummy function for now)
+      function deletePromotion(id) {
+        alert(`Delete promotion with ID: ${id}`);
+      }
+
+      // Function to fetch store data and populate the shop_id select
+      function fetchStore() {
+        const apiUrl = `https://hq.vuongandong.com/danang/api/promotion_tpl.php?action=getStore`;
+
+        fetch(apiUrl)
+          .then((response) => response.json())
+          .then((data) => {
+            const shopSelect = document.getElementById("shop_id");
+            shopSelect.innerHTML = ""; // Clear existing options
+
+            // Create and append default "All Shops" option
+            const defaultOption = document.createElement("option");
+            defaultOption.value = "";
+            defaultOption.textContent = "All Shops";
+            shopSelect.appendChild(defaultOption);
+
+            // Loop through the data and append each store as an option
+            data.forEach((store, index) => {
+              const option = document.createElement("option");
+              option.value = store.shop_cipher; // Assuming store ID is in `shop_cipher`
+              option.textContent = store.acc_code; // Assuming store name is in `acc_code`
+              // Chọn kết quả đầu tiên
+              
+              shopSelect.appendChild(option);
+            });
+          })
+          .catch((error) => {
+            console.error("Error fetching store:", error);
+          });
+      }
+      async function getProductPromotionByIdPromotion(promotion_id) {
+        const apiUrl = `https://hq.vuongandong.com/danang/api/promotion_tpl.php?action=getProductPromotionByIdPromotion&promotion_id=${promotion_id}`;
+        try {
+          const response = await fetch(apiUrl);
+          const data = await response.json();
+          console.log(data);
+          return data.count; // Giả định 'count' là giá trị bạn cần
+        } catch (error) {
+          console.error("Error fetching product promotion:", error);
+          return 0; // Trả về 0 hoặc giá trị mặc định nếu có lỗi
+        }
+      }
+      // Function to setup pagination buttons
+      function setupPagination(totalItems, pageSize, currentPage) {
+        const totalPages = Math.ceil(totalItems / pageSize);
+        const paginationContainer = document.getElementById("pagination");
+        paginationContainer.innerHTML = ""; // Clear pagination buttons
+
+        // Create previous page button
+        const prevButton = document.createElement("a");
+        prevButton.textContent = "Previous";
+        prevButton.classList.add(currentPage === 1 ? "disabled" : "");
+        prevButton.onclick = () => {
+          if (currentPage > 1) fetchPromotions(currentPage - 1);
+        };
+        paginationContainer.appendChild(prevButton);
+
+        // Create page number buttons
+        for (let i = 1; i <= totalPages; i++) {
+          const pageButton = document.createElement("a");
+          pageButton.textContent = i;
+          pageButton.classList.add(currentPage === i ? "active" : "");
+          pageButton.onclick = () => fetchPromotions(i);
+          paginationContainer.appendChild(pageButton);
+        }
+
+        // Create next page button
+        const nextButton = document.createElement("a");
+        nextButton.textContent = "Next";
+        nextButton.classList.add(currentPage === totalPages ? "disabled" : "");
+        nextButton.onclick = () => {
+          if (currentPage < totalPages) fetchPromotions(currentPage + 1);
+        };
+        paginationContainer.appendChild(nextButton);
+      }
+
+      // Call fetchStore on page load to populate shop_id select
+      document.addEventListener("DOMContentLoaded", fetchStore);
+
+      // Call the function to fetch promotions on page load
+      document.addEventListener("DOMContentLoaded", () => fetchPromotions(1));
+    </script>
+  </body>
+</html>
