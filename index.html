@@ -129,6 +129,11 @@
         <label for="">Total Rows:</label>
         <span class="text-danger" id="totalRow">0</span>
       </div>
+      <div style="margin-left: 10px">
+        <label for="">Current Time (Los Angeles):</label>
+        <span class="text-danger"  id="la_time"></span>
+        <!-- Thêm cột thời gian -->
+      </div>
     </form>
 
     <!-- Table to display promotions -->
@@ -354,6 +359,19 @@
 
       // Call the function to fetch promotions on page load
       document.addEventListener("DOMContentLoaded", () => fetchPromotions(1));
+      // Hàm cập nhật thời gian Los Angeles mỗi giây
+      function updateLATime() {
+        const laTime = moment()
+          .tz("America/Los_Angeles")
+          .format("DD/MM/YYYY hh:mm:ss A");
+        document.getElementById("la_time").textContent = laTime;
+      }
+
+      // Gọi hàm updateLATime mỗi giây để cập nhật thời gian
+      setInterval(updateLATime, 1000);
+
+      // Gọi hàm ngay lập tức khi trang load lần đầu tiên
+      updateLATime();
     </script>
   </body>
 </html>
